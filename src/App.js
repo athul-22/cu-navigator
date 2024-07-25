@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet-routing-machine';
 import 'leaflet/dist/leaflet.css';
@@ -29,7 +29,28 @@ const Routing = ({ userLocation, selectedLocation }) => {
         L.latLng(userLocation[0], userLocation[1]),
         L.latLng(selectedLocation.coordinates.lat, selectedLocation.coordinates.lng)
       ],
-      routeWhileDragging: true
+      routeWhileDragging: true,
+      createMarker: function (i, waypoint, n) {
+        let icon = new L.Icon({
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-red.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        });
+
+        if (i === 0) {
+          icon = new L.Icon({
+            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-red.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+          });
+        }
+
+        return L.marker(waypoint.latLng, { icon });
+      }
     }).addTo(map);
 
     return () => {
@@ -40,6 +61,45 @@ const Routing = ({ userLocation, selectedLocation }) => {
   }, [userLocation, selectedLocation, map]);
 
   return null;
+};
+
+const AnimatedMarker = ({ position }) => {
+  const [currentPosition, setCurrentPosition] = useState(position);
+  const [nextPosition, setNextPosition] = useState(null);
+
+  useMapEvent('move', () => {
+    if (nextPosition) {
+      setCurrentPosition(nextPosition);
+    }
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (nextPosition) {
+        setCurrentPosition(nextPosition);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [nextPosition]);
+
+  useEffect(() => {
+    if (position) {
+      setNextPosition(position);
+    }
+  }, [position]);
+
+  return (
+    <Marker position={currentPosition} icon={new L.Icon({
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-red.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    })}>
+      <Popup>Your Moving Location</Popup>
+    </Marker>
+  );
 };
 
 const App = () => {
@@ -93,6 +153,7 @@ const App = () => {
             {userLocation && selectedLocation && (
               <Routing userLocation={userLocation} selectedLocation={selectedLocation} />
             )}
+            {userLocation && <AnimatedMarker position={userLocation} />}
           </MapContainer>
         </div>
       )}
